@@ -2,53 +2,195 @@
 #include <cmath>
 using namespace std;
 
+int dimension = 2; // Размерность пространства
+int count_nerav = 2; // Количество уравнений типа неравенств
+int count_rav = 0; // Количество уравнений типа равенств
 // Отрез кодов друг от друга
 void separator()
 {
     cout << "\n==================================================================================\n\n";
 }
-// Функция, которую надо минимизировать
-double J(double* X)
+// Функция для перехода от P(x) к Pk(x)
+double Ak(int k)
 {
-    return pow(X[0], 2) + pow(X[1], 2);
+    return k;
 }
-double grad_J(int num_grad, double* X)
+
+// Функция, которую минимизируем
+double J(double* masX)
 {
-    switch (num_grad)
+    return pow(masX[0], 2) + pow(masX[1], 2);
+}
+// Градиент функции
+double grad_J(int grad, double* masX)
+{
+    switch (grad)
     {
     case 0:
-        return 2 * X[0];
+        return 2 * masX[0];
     case 1:
-        return 2 * X[1];
+        return 2 * masX[1];
     }
 }
-// Облегчение написания функции фи
-void phi(int deminsion, double* mas_phi, double alpha)
+
+// Функции равенств
+double rav(int rav, double* masX, double q, int k)
 {
-    double* new_mas = new double[3];
-    for (int i = 0; i < 3; i++)
+    switch (rav)
     {
-        new_mas[i] = mas_phi[i] - alpha * grad_J(i, mas_phi);
+    case 0:
+        return 0;
     }
-    for (int i = 0; i < 3; i++)
+}
+// Градиенты равенств
+double grad_rav(int rav, int grad, double* masX, double q, int k)
+{
+    switch (rav)
+    {
+    case 0:
+        switch (grad)
+        {
+        case 0:
+            return 0;
+        }
+    }
+}
+
+// Функции неравенств
+double nerav(int rav, double* masX, double q, int k)
+{
+    switch (rav)
+    {
+    case 0:
+        if (-masX[0] + 1 > 0)
+        {
+            return Ak(k) * pow(-masX[0] + 1, q);
+        }
+        else
+        {
+            return 0;
+        }
+    case 1:
+        if (masX[0] + masX[1] - 2 > 0)
+        {
+            return Ak(k) * pow(masX[0] + masX[1] - 2, q);
+        }
+        else
+        {
+            return 0;
+        }
+    }
+}
+// Градиенты неравенств
+double grad_nerav(int rav, int grad, double* masX, double q, int k)
+{
+    switch (rav)
+    {
+    case 0:
+        switch (grad)
+        {
+        case 0:
+            if (-masX[0] + 1 > 0)
+            {
+                return Ak(k) * (-q) * pow(-masX[0] + 1, q - 1);
+            }
+            else
+            {
+                return 0;
+            }
+        case 1:
+            return 0;
+        }
+    case 1:
+        switch (grad)
+        {
+        case 0:
+            if (masX[0] + masX[1] - 2 > 0)
+            {
+                return Ak(k) * q * pow(masX[0] + masX[1] - 2, q - 1);
+            }
+            else
+            {
+                return 0;
+            }
+        case 1:
+            if (masX[0] + masX[1] - 2 > 0)
+            {
+                return Ak(k) * q * pow(masX[0] + masX[1] - 2, q - 1);
+            }
+            else
+            {
+                return 0;
+            }
+        }
+    }
+}
+
+// Ищем Фk, который будем искать
+double PH(double* masX, double q, int k)
+{
+    double Ph = J(masX); // Даем значение J
+    for (int j = 0; j < count_rav; j++) // Добавляем равенства
+    {
+        Ph += Ak(k) * rav(j, masX, q, k);
+    }
+    for (int j = 0; j < count_nerav; j++) // Добавляем неравенства
+    {
+        Ph += Ak(k) * nerav(j, masX, q, k); // Здесь уже есть проверка на max
+    }
+    return Ph;
+}
+// Найдем производную Фк для метода наискорейшего спуска
+double grad_PH(int grad, double* masX, double q, int k)
+{
+    double grad_Ph = grad_J(grad, masX); // Даем значение J
+    for (int j = 0; j < count_rav; j++) // Добавляем равенства
+    {
+        grad_Ph += Ak(k) * grad_rav(j, grad, masX, q, k);
+    }
+    for (int j = 0; j < count_nerav; j++) // Добавляем неравенства
+    {
+        grad_Ph += Ak(k) * grad_nerav(j, grad, masX, q, k);
+    }
+    return grad_Ph;
+}
+
+// Облегчение написания функции фи
+void phi(double* mas_phi, double alpha, double q, int k)
+{
+    double* new_mas = new double[dimension];
+    double* grad_Phi = new double[dimension];
+    for (int i = 0; i < dimension; i++)
+    {
+        grad_Phi[i] = grad_PH(i, mas_phi, q, k);
+    }
+    for (int i = 0; i < dimension; i++)
+    {
+        new_mas[i] = mas_phi[i] - alpha * grad_Phi[i];
+    }
+    for (int i = 0; i < dimension; i++)
     {
         mas_phi[i] = new_mas[i];
     }
 }
 // Функция J для метода деления пополам
-double fast_J(int deminsion, double* masX, double alpha)
+double fast_J(double* masX, double alpha, double q, int k)
 {
-    double* mas_phi = new double[deminsion];
-    phi(deminsion, mas_phi, alpha);
-    return pow(mas_phi[0], 2) + pow(mas_phi[1], 2);
+    double* mas_phi = new double[dimension];
+    for (int i = 0; i < dimension; i++)
+    {
+        mas_phi[i] = masX[i]; // Передаем точку
+    }
+    phi(mas_phi, alpha, q, k);
+    return PH(mas_phi, q, k);
 }
 // Метод Половинного деления
-double HalfDivision(int deminsion, double A, double B, double* masX, double EPS)
+double HalfDivision(double A, double B, double* masX, double EPS, double q, int k)
 {
     double x1 = A, x2 = B, delta = EPS / 2; // Динамическая граница метода деления пополам
     do
     {
-        if (fast_J(deminsion, masX, (x1 + x2 - delta) / 2) <= fast_J(deminsion, masX, (x1 + x2 + delta) / 2))
+        if (fast_J(masX, (x1 + x2 - delta) / 2, q, k) <= fast_J(masX, (x1 + x2 + delta) / 2, q, k))
         {
             x2 = (x1 + x2 + delta) / 2;
         }
@@ -60,21 +202,21 @@ double HalfDivision(int deminsion, double A, double B, double* masX, double EPS)
     return (x1 + x2) / 2;
 }
 // Метод Наискорейшего спуска
-void Fastes(int deminsion, double* masX, double eps)
+void Fastes(double* masX, double eps, double q, int k)
 {
-    double alpha = HalfDivision(deminsion, 0, 100, masX, eps);
-    double* masY = new double[3];
+    double alpha = HalfDivision(0, 100, masX, eps, q, k);
+    double* masY = new double[dimension];
     int exit = 0;
     while (alpha >= eps * eps && exit != 5)
     {
-        alpha = HalfDivision(deminsion, 0, 1000, masX, eps);
-        for (int i = 0; i < deminsion; i++)
+        alpha = HalfDivision(0, 1000, masX, eps, q, k);
+        for (int i = 0; i < dimension; i++)
         {
-            masY[i] = masX[i] - alpha * grad_J(i, masX);
+            masY[i] = masX[i] - alpha * grad_PH(i, masX, q, k);
         }
-        if (J(masX) > J(masY))
+        if (PH(masX, q, k) > PH(masY, q, k))
         {
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < dimension; i++)
             {
                 masX[i] = masY[i];
             }
@@ -86,133 +228,69 @@ void Fastes(int deminsion, double* masX, double eps)
         }
     }
 }
-// Возвращаем значения равеств
-double rav(int type_of_ne_rav, double* X, double q)
-{
-    switch (type_of_ne_rav)
-    {
-    case 0:
-        return pow(0, 1);
-    }
-}
-// Выбираем необходимое нам неравество в квадрате
-double ne_rav(int type_of_ne_rav, double* X)
-{
-    switch (type_of_ne_rav)
-    {
-    case 0:
-        return -X[0] + 1;
-    case 1:
-        return X[0] + X[1] - 2;
-    }
-}
-// Поиск максимума у неравенства
-double max_ne_rav(int type_of_ne_rav,double* X, double q)
-{
-    double znach = ne_rav(type_of_ne_rav, X);
-    if (znach > 0) // Возвращаем максимальное значение или 0
-    {
-        return pow(znach, q);
-    }
-    else
-    {
-        return 0.;
-    }
-}
-double Ak(int k) // Функция Ak
-{
-    return k;
-}
 // Метод штрафных функций
-void penalty_func(int deminsion, int count_rav, int count_ne_rav, double q, double* masX, double eps, int& step)
+void penalty_func(double* masX, int& step, double eps, double q)
 {
-    int k = 2;
-    double Jk = 1000000;
-    double Jk_2 = 0;
-    while (abs(Jk - Jk_2) > eps)
+    int k = 1;
+    int check = 0;
+    double* masXk = new double[dimension];
+    double* masXk_2 = new double[dimension];
+    cout << "Start method\n\n";
+    while (check != dimension)
     {
-        if (k % 2 == 1) // Если у нас нету целого числа от k/2, то мы пропускаем его
+        check = 0;
+        if (k % 2 == 1)
         {
             k++;
         }
         else
         {
-            Fastes(deminsion, masX, eps);
-            cout << masX[0] << " " << masX[1] << endl;
-            // Ищем значения J от шага k
-            Jk = 0; // Обнуляем значения
-            Jk += J(masX); // Добавляем само уравнение
-            cout << Jk << " ";
-            for (int i = 0; i < count_rav; i++) // Добавляем равенства
+            for (int i = 0; i < dimension; i++)
             {
-                Jk += Ak(k) * rav(i, masX, q);
+                masXk[i] = masX[i];
+                masXk_2[i] = masX[i];
             }
-            cout << Jk << " ";
-            for (int i = 0; i < count_ne_rav; i++) // Добавляем неравенства
+            Fastes(masXk, eps, q, k);
+            Fastes(masXk_2, eps, q, k / 2);
+            if (step % 10 ==0)
             {
-                Jk += Ak(k) * max_ne_rav(i, masX, q);
+                cout << k << " " << masXk[0] << " " << masXk[1] << " " << J(masXk) << "\n";
+                cout << k << " " << masXk_2[0] << " " << masXk_2[1] << " " << J(masXk_2);
+                separator();
             }
-            cout << Jk << endl;
-            // Ищем значения J от шага k/2
-            Jk_2 = 0; // Обнуляем значения
-            Jk_2 += J(masX); // Добавляем само уравнение
-            cout << Jk_2 << " ";
-            for (int i = 0; i < count_rav; i++) // Добавляем равенства
-            {
-                Jk_2 += Ak(k / 2) * rav(i, masX, q);
-            }
-            cout << Jk_2 << " ";
-            for (int i = 0; i < count_ne_rav; i++) // Добавляем неравенства
-            {
-                Jk_2 += Ak(k / 2) * max_ne_rav(i, masX, q);
-            }
-            cout << Jk_2;
-            separator();
             k++;
             step++;
+            for (int i = 0; i < dimension; i++)
+            {
+                if (abs(masXk[i] - masXk_2[i]) < eps * 10)
+                {
+                    check++;
+                }
+            }
         }
+    }
+    for (int i = 0; i < dimension; i++)
+    {
+        masX[i] = masXk[i];
     }
 }
 
 int main()
 {
-    double q; // Константа для метода
+    double q = 2; // Константа для метода
     double eps = pow(10, -4);
-    int deminsion = 2; // Размерность пространства
-    int count_ne_rav = 2; // Количество уравнений типа неравенств
-    int count_rav = 0; // Количество уравнений типа равенств
-    cout << "This program use A(k)=k\n";
-    separator();
-    cout << "Enter the q=";
-    cin >> q;
-    q = abs(q); // На всякий случай нормируем
-    if (q < 1)
-    {
-        cout << "You enter wrong q, set q = 2\n";
-        q = 2;
-    }
+    cout << "This program use A(k)=k and q=2";
     separator();
     int step = 0; // Вывод количества итераций
-    double* masX = new double[deminsion]; // Начальная точка и после точка для ответа
-    for (int i = 0; i < deminsion; i++) // Узнаем точку для метода наискорейшего спуска
+    double* masX = new double[dimension]; // Начальная точка и после точка для ответа
+    for (int i = 0; i < dimension; i++) // Узнаем точку для метода наискорейшего спуска
     {
         cout << "Choice x" << i + 1 << " = ";
         cin >> masX[i];
     }
     cout << endl;
     separator();
-    penalty_func(deminsion, count_rav, count_ne_rav, q, masX, eps, step);
-    cout << "Minimum point x=(";
-    for (int i = 0; i < deminsion; i++) // Вывод ответа
-    {
-        if ( i != deminsion -1)
-        {
-            cout << masX[i] << " ; ";
-        }
-        else
-        {
-            cout << masX[i] << ")  J(x)=" << J(masX) << "  reached with " << step << " step\n";
-        }
-    }
+    penalty_func(masX, step, eps, q);
+    cout << masX[0] << " " << masX[1] << " " << J(masX) << " with step=" << step;
     return 1;
 }
