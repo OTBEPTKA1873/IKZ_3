@@ -19,7 +19,7 @@ double Ak(int k)
 // Функция, которую минимизируем
 double J(double* masX)
 {
-    return pow(masX[0], 2) + pow(masX[1], 2);
+    return pow(masX[0], 2) - 2 * masX[0] - masX[1];
 }
 // Градиент функции
 double grad_J(int grad, double* masX)
@@ -27,9 +27,9 @@ double grad_J(int grad, double* masX)
     switch (grad)
     {
     case 0:
-        return 2 * masX[0];
+        return 2 * masX[0] - 2;
     case 1:
-        return 2 * masX[1];
+        return -1;
     }
 }
 
@@ -62,18 +62,18 @@ double nerav(int rav, double* masX, double q, int k)
     switch (rav)
     {
     case 0:
-        if (-masX[0] + 1 > 0)
+        if (2 * masX[0] + 3 * masX[1] - 6 > 0)
         {
-            return Ak(k) * pow(-masX[0] + 1, q);
+            return Ak(k) * pow(2 * masX[0] + 3 * masX[1] - 6, q);
         }
         else
         {
             return 0;
         }
     case 1:
-        if (masX[0] + masX[1] - 2 > 0)
+        if (2 * masX[0] + masX[1] - 4 > 0)
         {
-            return Ak(k) * pow(masX[0] + masX[1] - 2, q);
+            return Ak(k) * pow(2 * masX[0] + masX[1] - 4, q);
         }
         else
         {
@@ -90,33 +90,40 @@ double grad_nerav(int rav, int grad, double* masX, double q, int k)
         switch (grad)
         {
         case 0:
-            if (-masX[0] + 1 > 0)
+            if (2 * masX[0] + 3 * masX[1] - 6 > 0)
             {
-                return Ak(k) * (-q) * pow(-masX[0] + 1, q - 1);
+                return Ak(k) * (2 * q) * pow(2 * masX[0] + 3 * masX[1] - 6, q - 1);
             }
             else
             {
                 return 0;
             }
         case 1:
-            return 0;
+            if (2 * masX[0] + 3 * masX[1] - 6 > 0)
+            {
+                return Ak(k) * (3 * q) * pow(2 * masX[0] + 3 * masX[1] - 6, q - 1);
+            }
+            else
+            {
+                return 0;
+            }
         }
     case 1:
         switch (grad)
         {
         case 0:
-            if (masX[0] + masX[1] - 2 > 0)
+            if (2 * masX[0] + masX[1] - 4 > 0)
             {
-                return Ak(k) * q * pow(masX[0] + masX[1] - 2, q - 1);
+                return Ak(k) * (2 * q) * pow(2 * masX[0] + masX[1] - 4, q - 1);
             }
             else
             {
                 return 0;
             }
         case 1:
-            if (masX[0] + masX[1] - 2 > 0)
+            if (2 * masX[0] + masX[1] - 4 > 0)
             {
-                return Ak(k) * q * pow(masX[0] + masX[1] - 2, q - 1);
+                return Ak(k) * (1 * q) * pow(2 * masX[0] + masX[1] - 4, q - 1);
             }
             else
             {
@@ -209,7 +216,7 @@ void Fastes(double* masX, double eps, double q, int k)
     int exit = 0;
     while (alpha >= eps * eps && exit != 5)
     {
-        alpha = HalfDivision(0, 1000, masX, eps, q, k);
+        alpha = HalfDivision(0, 100, masX, eps, q, k);
         for (int i = 0; i < dimension; i++)
         {
             masY[i] = masX[i] - alpha * grad_PH(i, masX, q, k);
@@ -252,10 +259,10 @@ void penalty_func(double* masX, int& step, double eps, double q)
             }
             Fastes(masXk, eps, q, k);
             Fastes(masXk_2, eps, q, k / 2);
-            if (step % 10 ==0)
+            if (step % 10 == 0)
             {
                 cout << k << " " << masXk[0] << " " << masXk[1] << " " << J(masXk) << "\n";
-                cout << k << " " << masXk_2[0] << " " << masXk_2[1] << " " << J(masXk_2);
+                cout << k / 2 << " " << masXk_2[0] << " " << masXk_2[1] << " " << J(masXk_2);
                 separator();
             }
             k++;
@@ -278,7 +285,7 @@ void penalty_func(double* masX, int& step, double eps, double q)
 int main()
 {
     double q = 2; // Константа для метода
-    double eps = pow(10, -4);
+    double eps = pow(10, -5);
     cout << "This program use A(k)=k and q=2";
     separator();
     int step = 0; // Вывод количества итераций
