@@ -39,7 +39,7 @@ double rav(int rav, double* masX, double q, int k)
     switch (rav)
     {
     case 0:
-        return 0;
+        return Ak(k) * pow(abs(masX[0] + masX[1] + 3), q);
     }
 }
 // Градиенты равенств
@@ -51,7 +51,23 @@ double grad_rav(int rav, int grad, double* masX, double q, int k)
         switch (grad)
         {
         case 0:
-            return 0;
+            if (masX[0] + masX[1] + 3 > 0)
+            {
+                return Ak(k) * q * pow(masX[0] + masX[1] + 3, q - 1);;
+            }
+            else
+            {
+                return  pow(-1, q) * Ak(k) * q * pow(masX[0] + masX[1] + 3, q - 1);
+            }
+        case 1:
+            if (masX[0] + masX[1] + 3 > 0)
+            {
+                return Ak(k) * q * pow(masX[0] + masX[1] + 3, q - 1);;
+            }
+            else
+            {
+                return  pow(-1, q) * Ak(k) * q * pow(masX[0] + masX[1] + 3, q - 1);
+            }
         }
     }
 }
@@ -284,20 +300,65 @@ void penalty_func(double* masX, int& step, double eps, double q)
 
 int main()
 {
+    srand(time(NULL));
     double q = 2; // Константа для метода
-    double eps = pow(10, -5);
+    double eps = pow(10, -4);
     cout << "This program use A(k)=k and q=2";
     separator();
     int step = 0; // Вывод количества итераций
+    int min_step = 0; // Количество итераций у минимума
     double* masX = new double[dimension]; // Начальная точка и после точка для ответа
-    for (int i = 0; i < dimension; i++) // Узнаем точку для метода наискорейшего спуска
+    double* infX = new double[dimension]; // Минимальная точка
+    for (int j = 0; j < 10; j++)
     {
-        cout << "Choice x" << i + 1 << " = ";
-        cin >> masX[i];
+        // Создаем точку для метода штрафных функций
+        for (int i = 0; i < dimension; i++)
+        {
+            if (rand() % 2)
+            {
+                masX[i] = rand() % 100;
+            }
+            else
+            {
+                masX[i] = -rand() % 100;
+            }
+            cout << masX[i] << " ";
+        }
+        separator();
+        step = 0; // Обнуляем количество шагов для повторного запуска
+        penalty_func(masX, step, eps, q);
+        if (j == 1) // Берем значения из первого прохода
+        {
+            for (int i = 0; i < dimension; i++)
+            {
+                infX[i] = masX[i];
+            }
+            min_step = step;
+        }
+        else
+        {
+            // Берем минимальное значение
+            if (J(masX) < J(infX))
+            {
+                for (int i = 0; i < dimension; i++)
+                {
+                    infX[i] = masX[i];
+                }
+                min_step = step;
+            }
+        }
     }
-    cout << endl;
-    separator();
-    penalty_func(masX, step, eps, q);
-    cout << masX[0] << " " << masX[1] << " " << J(masX) << " with step=" << step;
+    cout << "X=(";
+    for (int i = 0; i < dimension; i++)
+    {
+        if (i+1 != dimension)
+        {
+            cout << infX[i] << "; ";
+        }
+        else
+        {
+            cout << infX[i] << ")  J(X)=" << J(infX) << " with step=" << min_step << endl;;
+        }
+    }
     return 1;
 }
